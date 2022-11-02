@@ -55,9 +55,6 @@ mydestination = $myhostname, localhost.$mydomain, localhost
 # Domain appended to mail sent locally from this machine - such as mail sent
 # via the `sendmail` command.
 myorigin = $myhostname
-# mynetwork_style = host #unused
-sender_bcc_maps = texthash:/etc/postfix/sender_bcc
-recipient_bcc_maps = texthash:/etc/postfix/recipient_bcc
 
 # prevent spammers from searching for valid users
 disable_vrfy_command = yes
@@ -91,11 +88,6 @@ smtpd_tls_key_file = /etc/letsencrypt/live/mail.example.com/privkey.pem
 smtp_tls_security_level = dane
 smtp_dns_support_level = dnssec
 smtp_host_lookup=dns
-# DANE requires a DNSSEC capable resolver. If your DNS resolver doesn't
-# support DNSSEC, remove the above two lines and uncomment the below:
-#smtp_tls_security_level = may
-# allow other mail servers to connect using TLS, but don't require it
-#smtpd_tls_security_level = may
 
 # tickets and compression have known vulnerabilities
 tls_ssl_options = no_ticket, no_compression
@@ -167,7 +159,7 @@ smtpd_sender_restrictions =
   reject_unauth_pipelining,
   #  reject_unknown_reverse_client_hostname,
   #  reject_unknown_client_hostname,
-  check_sender_access      texthash:/etc/postfix/rejected_tlds
+  #check_sender_access      texthash:/etc/postfix/rejected_tlds
 smtpd_reject_unlisted_sender = yes  
  
 smtpd_relay_restrictions = 
@@ -177,8 +169,8 @@ smtpd_relay_restrictions =
   reject_unauth_destination
 # !!!      DO NOT REMOVE IT UNDER ANY CIRCUMSTANCES      !!!
 smtpd_recipient_restrictions =
-  check_client_access texthash:/etc/postfix/client_checks,
-  check_sender_access      texthash:/etc/postfix/sender_access,
+  #check_client_access texthash:/etc/postfix/client_checks,
+  #check_sender_access      texthash:/etc/postfix/sender_access,
   check_policy_service unix:private/policy-spf,
   check_policy_service unix:private/quota-status,
   permit_mynetworks,
@@ -251,7 +243,6 @@ smtpd_tls_loglevel = 1
 #milter_protocol = 6
 #milter_mail_macros=i {mail_addr} {client_addr} {client_name} {auth_authen}
 #milter_default_action = accept
-smtp_header_checks = regexp:/etc/postfix/smtp_header_checks
 smtpd_recipient_limit = 50
 smtpd_recipient_overshoot_limit = 51
 smtpd_hard_error_limit = 20
