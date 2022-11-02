@@ -169,8 +169,6 @@ smtpd_relay_restrictions =
   reject_unauth_destination
 # !!!      DO NOT REMOVE IT UNDER ANY CIRCUMSTANCES      !!!
 smtpd_recipient_restrictions =
-  #check_client_access texthash:/etc/postfix/client_checks,
-  #check_sender_access      texthash:/etc/postfix/sender_access,
   check_policy_service unix:private/policy-spf,
   check_policy_service unix:private/quota-status,
   permit_mynetworks,
