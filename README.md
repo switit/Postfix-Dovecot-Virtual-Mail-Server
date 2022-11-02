@@ -276,10 +276,7 @@ postscreen_dnsbl_sites =
         bl.spameatingmonkey.net*2
         bl.spamcop.net
         dnsbl.sorbs.net
-       swl.spamhaus.org*-4,
-#       list.dnswl.org=127.[0..255].[0..255].0*-2,
-#       list.dnswl.org=127.[0..255].[0..255].1*-4,
-#       list.dnswl.org=127.[0..255].[0..255].[2..3]*-6
+       swl.spamhaus.org*-4
 ```
 5. 
 
