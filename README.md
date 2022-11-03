@@ -263,7 +263,7 @@ dbname = postfix_db
 query = SELECT maildir FROM mailbox WHERE username='%s' AND active = '1'
 ```
 
-5. Install and configure dovecot with siev plugin
+5. Install and configure dovecot with siev and quota plugins
 ```
 pacman -S dovecot pigeonhole
 mkdir /etc/dovecot
@@ -508,13 +508,85 @@ plugin {
     sieve_pipe_bin_dir = /etc/dovecot/sieve
     sieve_global_extensions = +vnd.dovecot.pipe
     }
-    ```
+```
+/usr/local/bin/quota-warning.sh
+```
+#!/bin/sh
+BOUNDARY="$1"
+USER="$2"
+MSG=""
+if [ "$BOUNDARY" = "+100" ]; then
+    MSG="Your mailbox is now overfull (>100%). In order for your account to continue functioning properly, you need to remove some emails NOW."
+elif [ "$BOUNDARY" = "+95" ]; then
+    MSG="Your mailbox is now over 95% full. Please remove some emails ASAP."
+elif [ "$BOUNDARY" = "+80" ]; then
+    MSG="Your mailbox is now over 80% full. Please consider removing some emails to save space."
+elif [ "$BOUNDARY" = "-100" ]; then
+    MSG="Your mailbox is now back to normal (<100%)."
+fi
 
+cat << EOF | /usr/lib/dovecot/dovecot-lda -d $USER -o "plugin/quota=maildir:User quota:noenforcing"
+From: postmaster@wisecomnet.com
+To: ${USER}
+Bcc: postmaster@wisecomnet.com
+Subject: Email Account Quota Warning
 
+Dear ${USER},
+
+$MSG
+
+Best regards,
+Your Mail System
+EOF
+```
+Make the file executable
+```
+chomd +x /usr/local/bin/quota-warning.sh
+```
 Then
 ```
 systemctl start dovecot
 systemctl enable dovecot
 ```
-6. 
+6. Install and configure rspamd amd redis
+```
+pacman -S rspamd redis
+systemctl start rspamd; systemctl enable rspamd
+systemctl start redis; systemctl enable redis
+mkdir /etc/rspamd/local.d
+```
+Create the following files
+/etc/rspamd/local.d/arc.conf
+```
+path = "/var/lib/rspamd/dkim/$selector.key";
+selector_map = "/etc/rspamd/dkim_selectors.map";
+```
+/etc/rspamd/local.d/classifier-bayes.conf
+```
+servers = "127.0.0.1";
+backend = "redis";
+autolearn = true;
+```
+/etc/rspamd/local.d/dkim_signing.conf
+```
+path = "/var/lib/rspamd/dkim/$selector.key";
+selector_map = "/etc/rspamd/dkim_selectors.map";
+allow_username_mismatch = true;
+```
+/etc/rspamd/local.d/redis.conf
+```
+servers = "127.0.0.1";
+```
+/etc/rspamd/local.d/worker-controller.inc
+```
+/etc/rspamd/local.d/worker-proxy.inc
+```
+bind_socket = "/var/run/rspamd/rspamd.sock mode=0660 owner=postfix";
+upstream "local" {
+  self_scan = yes; # Enable self-scan
+}
+```
+
+7. 
+8. 
 
