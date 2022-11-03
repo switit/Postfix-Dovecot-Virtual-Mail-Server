@@ -595,6 +595,27 @@ upstream "local" {
 ```
 DOMAINNAME SELECTOR
 ```
+/etc/dovecot/sieve/learn-ham.sieve
+```
+require ["vnd.dovecot.pipe", "copy", "imapsieve"];
+pipe :copy "rspamd-learn-ham.sh";
+```
+/etc/dovecot/sieve/learn-spam.sieve
+```
+require ["vnd.dovecot.pipe", "copy", "imapsieve"];
+pipe :copy "rspamd-learn-spam.sh";
+```
+/etc/dovecot/sieve/rspamd-learn-ham.sh
+```
+#!/bin/sh
+exec /usr/bin/rspamc learn_ham
+```
+/etc/dovecot/sieve/rspamd-learn-spam.sh
+```
+#!/bin/sh
+exec /usr/bin/rspamc learn_spam
+```
+
 7. Fire it up
 8. You definitely want to add postfixadmin and roundcubemail.
 
