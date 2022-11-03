@@ -263,7 +263,17 @@ dbname = postfix_db
 query = SELECT maildir FROM mailbox WHERE username='%s' AND active = '1'
 ```
 
-
-
-5. 
+5. Install and configure dovecot
+```
+pacman -S dovecot
+```
+mkdir /etc/dovecot
+cp /usr/share/doc/dovecot/example-config/dovecot.conf /etc/dovecot/dovecot.conf
+cp -r /usr/share/doc/dovecot/example-config/conf.d /etc/dovecot
+openssl dhparam -out /etc/dovecot/dh.pem 4096 # This takes a long time
+ssl_dh = </etc/dovecot/dh.pem
+systemctl start dovecot
+systemctl enable dovecot
+```
+6. 
 
