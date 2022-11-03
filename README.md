@@ -288,6 +288,229 @@ dict {
 !include_try local.conf
 !include_try /usr/share/dovecot/protocols.d/*.protocol
 ```
+Create the following files
+/etc/dovecot/dovecot-dict-sql.conf.ext
+```
+connect = host=localhost dbname=postfix_db user=postfix_user password=127posx
+map {
+pattern = priv/quota/storage
+table = quota2
+username_field = username
+value_field = bytes
+}
+map {
+pattern = priv/quota/messages
+table = quota2
+username_field = username
+value_field = messages
+}
+```
+/etc/dovecot/dovecot-sql.conf
+```
+driver = mysql
+connect = host=localhost dbname=postfix_db user=postfix_user password=127posx
+default_pass_scheme = MD5-CRYPT
+user_query = SELECT '/home/vmail/%d/%u' as home, 'maildir:/home/vmail/%d/%u' as mail, 5000 AS uid, 5000 AS gid, concat('*:bytes=', quota) AS quota_rule FROM mailbox WHERE username = '%u' AND active = '1'
+password_query = SELECT username as user, password, '/home/vmail/%d/%u' as userdb_home, 'maildir:/home/vmail/%d/%u' as userdb_mail, 5000 as  userdb_uid, 5000 as userdb_gid, concat('*:bytes=', quota) AS userdb_quota_rule FROM mailbox WHERE username = '%u' AND active = '1'
+iterate_query = SELECT username AS user FROM mailbox
+```
+Replace content of the following files. Creat new files if not exist
+/etc/dovecot/conf.d/10-auth.conf
+```
+auth_mechanisms = plain login
+passdb {
+    driver = sql
+    args = /etc/dovecot/dovecot-sql.conf
+}
+userdb {
+    driver = sql
+    args = /etc/dovecot/dovecot-sql.conf
+}
+
+service auth {
+    unix_listener auth-client {
+        group = postfix
+        mode = 0660
+        user = postfix
+    }
+    user = root
+}
+```
+/etc/dovecot/conf.d/10-dovecot-postfix.conf
+```
+mail_home = /home/vmail/%d/%u
+mail_location = maildir:~
+```
+/etc/dovecot/conf.d/10-master.conf
+```
+service lmtp {
+  unix_listener lmtp {
+    #mode = 0666
+  }
+  unix_listener /var/spool/postfix/private/dovecot-lmtp {
+    mode = 0600
+    user = postfix
+    group = postfix
+  }
+}
+
+service dict {
+	unix_listener dict {
+		group = vmail
+		mode = 0660
+		user = vmail
+	}
+	user = root
+}
+
+service stats {
+    unix_listener stats-reader {
+        user = vmail
+        group = vmail
+        mode = 0660
+    }
+
+    unix_listener stats-writer {
+        user = vmail
+        group = vmail
+        mode = 0660
+    }
+}
+```
+/etc/dovecot/conf.d/15-mailboxes.conf
+```
+namespace inbox {
+  inbox = yes
+  mailbox Trash {
+    auto = no
+    autoexpunge = 30d
+    special_use = \Trash
+  }
+  mailbox Drafts {
+    auto = no
+    special_use = \Drafts
+  }
+  mailbox Sent {
+    auto = subscribe # autocreate and autosubscribe the Sent mailbox
+    special_use = \Sent
+  }
+  mailbox "Sent Messages" {
+    auto = no
+    special_use = \Sent
+  }
+  mailbox Junk {
+    auto = create # autocreate Spam, but don't autosubscribe
+    autoexpunge = 30d
+    special_use = \Junk
+  }
+}
+mailbox_list_index = yes
+```
+/etc/dovecot/conf.d/20-managesieve.conf
+```
+service managesieve-login {
+}
+
+service managesieve {
+}
+
+protocol sieve {
+    managesieve_max_line_length = 65536
+    managesieve_implementation_string = dovecot
+}
+
+plugin {
+    sieve = file:~/sieve
+    active=~/.dovecot.sieve
+}
+```
+/etc/dovecot/conf.d/20-protocols.conf
+```
+mail_plugins=quota
+protocol pop3 {
+mail_plugins = quota
+pop3_client_workarounds = outlook-no-nuls oe-ns-eoh
+pop3_uidl_format = %08Xu%08Xv
+}
+
+protocol lmtp {
+mail_plugins = quota sieve
+postmaster_address = postmaster@wisecomnet.com
+}	
+
+protocol lda {
+mail_plugins = quota
+postmaster_address = postmaster@wisecomnet.com
+}
+
+protocol imap {
+mail_plugins = $mail_plugins imap_quota imap_sieve
+mail_plugin_dir = /usr/lib/dovecot/modules
+}
+```
+/etc/dovecot/conf.d/90-quota.conf
+```
+plugin {
+quota = dict:User quota::proxy::quotadict
+#quota_set = dict:proxy::quota
+#quota2 = dict:user::proxy::quotadict
+#quota_exceeded_message = Quota exceeded
+#quota_rule = *:storage=1GB:messages=10000
+quota_rule2 = Trash:storage=+10%%
+quota_rule3 = SPAM:ignore
+#quota2 = maildir
+quota_warning = storage=100%% quota-warning +100 %u
+quota_warning2 = storage=95%% quota-warning +95 %u
+quota_warning3 = storage=80%% quota-warning +80 %u
+quota_warning4 = -storage=100%% quota-warning -100 %u # user is no longer over quota
+  quota_status_success = DUNNO
+  quota_status_nouser = DUNNO
+  quota_status_overquota = "452 4.2.2 Mailbox is full and cannot receive any more emails"
+}
+
+service quota-status {
+  executable = /usr/lib/dovecot/quota-status -p postfix
+  unix_listener /var/spool/postfix/private/quota-status {
+    	group = postfix
+		mode = 0600
+		user = postfix
+  }
+}
+
+service quota-warning {
+	executable = script /usr/local/bin/quota-warning.sh
+	# use some unprivileged user for executing the quota warnings
+	user = vmail
+	unix_listener quota-warning {
+		group = vmail
+		mode = 0660
+		user = vmail
+	}
+}	
+```
+/etc/dovecot/conf.d/91-sieve.conf
+```
+plugin {
+    sieve_before = /etc/dovecot/sieve-before
+    sieve_after = /home/vmail/%d/%u/sieve
+    sieve_plugins = sieve_imapsieve sieve_extprograms
+    # From elsewhere to Junk folder
+    imapsieve_mailbox1_name = Junk
+    imapsieve_mailbox1_causes = COPY
+    imapsieve_mailbox1_before = file:/etc/dovecot/sieve/learn-spam.sieve
+
+    # From Junk folder to elsewhere
+    imapsieve_mailbox2_name = *
+    imapsieve_mailbox2_from = Junk
+    imapsieve_mailbox2_causes = COPY
+    imapsieve_mailbox2_before = file:/etc/dovecot/sieve/learn-ham.sieve
+
+    sieve_pipe_bin_dir = /etc/dovecot/sieve
+    sieve_global_extensions = +vnd.dovecot.pipe
+    }
+    ```
+
+
 Then
 ```
 systemctl start dovecot
