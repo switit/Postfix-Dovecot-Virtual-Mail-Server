@@ -229,6 +229,7 @@ policy-spf  unix  -       n       n       -       0       spawn
      user=nobody argv=/usr/lib/postfix/postfix-policyd-spf-perl  
 ```
 Creat the following 4 files
+
 /etc/postfix/virtual_alias_maps.cf
 ```
 user = postfix_user
