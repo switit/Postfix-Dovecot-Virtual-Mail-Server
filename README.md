@@ -263,20 +263,30 @@ dbname = postfix_db
 query = SELECT maildir FROM mailbox WHERE username='%s' AND active = '1'
 ```
 
-5. Install and configure dovecot
+5. Install and configure dovecot with siev plugin
 ```
-pacman -S dovecot
+pacman -S dovecot pigeonhole
 mkdir /etc/dovecot
 cp /usr/share/doc/dovecot/example-config/dovecot.conf /etc/dovecot/dovecot.conf
 cp -r /usr/share/doc/dovecot/example-config/conf.d /etc/dovecot
 openssl dhparam -out /etc/dovecot/dh.pem 4096 # This takes a long time
 ```
-Add this line to /etc/dovecot/conf.d/10-ssl.conf
+Replace content of /etc/dovecot/conf.d/10-ssl.conf with
 ```
 ssl_dh = </etc/dovecot/dh.pem
 ssl_cert = </etc/letsencrypt/live/mail.example.com/fullchain.pem #Assuming you have letsencrypt certificate in place
 ssl_key = </etc/letsencrypt/live/mailexample.com/privkey.pem #Assuming you have letsencrypt certificate in place
 ssl_min_protocol = TLSv1
+```
+Replace content of /etc/dovecot/dovecot.conf with
+```
+protocols = imap pop3 lmtp sieve
+dict {
+  quotadict = mysql:/etc/dovecot/dovecot-dict-sql.conf.ext
+}
+!include conf.d/*.conf
+!include_try local.conf
+!include_try /usr/share/dovecot/protocols.d/*.protocol
 ```
 Then
 ```
