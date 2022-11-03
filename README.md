@@ -39,117 +39,46 @@ systemctl enable postfix
 Replace /etc/postfix/main.cf content with
 ```
 mydomain = example.com
-# disable "new mail" notifications for local unix users
 biff = no
-# Name of this mail server, used in the SMTP HELO for outgoing mail. Make
-# sure this resolves to the same IP as your reverse DNS hostname.
 myhostname = mail.example.com
-# Domains for which postfix will deliver local mail. Does not apply to
-# virtual domains, which are configured below. Make sure to specify the FQDN
-# of your sever, as well as localhost.
-# Note: NEVER specify any virtual domains here!!! Those come later.
-#mydestination = $myhostname, localhost.$mydomain, localhost, mail.$mydomain
 mydestination = $myhostname, localhost.$mydomain, localhost
-
-# SENDING MAIL
-# Domain appended to mail sent locally from this machine - such as mail sent
-# via the `sendmail` command.
 myorigin = $myhostname
-
-# prevent spammers from searching for valid users
 disable_vrfy_command = yes
-
-# require properly formatted email addresses - prevents a lot of spam
+matted email addresses - prevents a lot of spam
 strict_rfc821_envelopes = yes
-
-# don't give any helpful info when a mailbox doesn't exist
 show_user_unknown_table_name = no
-
-# limit maximum e-mail size to 50MB. mailbox size must be at least as big as
-# the message size for the mail to be accepted, but has no meaning after
-# that since we are using Dovecot for delivery.
 message_size_limit = 51200000
 mailbox_size_limit = 51200000
-
-# require addresses of the form "user@domain.tld"
 allow_percent_hack = no
 swap_bangpath = no
-
-# allow plus-aliasing: "user+tag@domain.tld" delivers to "user" mailbox
 recipient_delimiter = +
-
-# path to the SSL certificate for the mail server
 smtpd_tls_cert_file = /etc/letsencrypt/live/mail.example.com/fullchain.pem
 smtpd_tls_key_file = /etc/letsencrypt/live/mail.example.com/privkey.pem
-
-# These three lines define how postfix will connect to other mail servers.
-# DANE is a stronger form of opportunistic TLS. You can read about it here:
-# http://www.postfix.org/TLS_README.html#client_tls_dane
 smtp_tls_security_level = dane
 smtp_dns_support_level = dnssec
 smtp_host_lookup=dns
-
-# tickets and compression have known vulnerabilities
 tls_ssl_options = no_ticket, no_compression
-
-# Implement foreward secrecy as per http://www.postfix.org/FORWARD_SECRECY_README.html#quick-start
 smtpd_tls_dh1024_param_file = ${config_directory}/dh2048.pem
 smtpd_tls_dh512_param_file = ${config_directory}/dh512.pem
-
-# cache incoming and outgoing TLS sessions
-#smtpd_tls_session_cache_database = btree:${data_directory}/smtpd_tlscache
-#smtp_tls_session_cache_database  = btree:${data_directory}/smtp_tlscache
-
-# enable SMTPD auth. Dovecot will place an `auth` socket in postfix's
-# runtime directory that we will use for authentication.
 smtpd_sasl_auth_enable = yes
 smtpd_sasl_path = /var/run/dovecot/auth-client
 smtpd_sasl_type = dovecot
 smtpd_sasl_authenticated_header = yes
-
-
-# only allow authentication over TLS
 smtpd_tls_auth_only = yes
-
-#don't allow plaintext auth methods on unencrypted connections
-smtpd_sasl_security_options = noanonymous, noplaintext
-# but plaintext auth is fine when using TLS
 smtpd_sasl_tls_security_options = noanonymous
-
-# add a message header when email was recieved over TLS
 smtpd_tls_received_header = yes
-
-# require that connecting mail servers identify themselves - this greatly
-# reduces spam
 smtpd_helo_required = yes
 
-# The following block specifies some security restrictions for incoming
-# mail. The gist of it is, authenticated users and connections from
-# localhost can do anything they want. Random people connecting over the
-# internet are treated with more suspicion: they must have a reverse DNS
-# entry and present a valid, FQDN HELO hostname. In addition, they can only
-# send mail to valid mailboxes on the server, and the sender's domain must
-# actually exist.
 smtpd_client_restrictions =
   permit_mynetworks,
   permit_sasl_authenticated,
   reject_unknown_reverse_client_hostname,
-# you might want to consider:
-#  reject_unknown_client_hostname,
-# here. This will reject all incoming connections without a reverse DNS
-# entry that resolves back to the client's IP address. This is a very
-# restrictive check and may reject legitimate mail.
   reject_unauth_pipelining
 smtpd_helo_restrictions =
   permit_mynetworks,
   permit_sasl_authenticated,
   reject_invalid_helo_hostname,
   reject_non_fqdn_helo_hostname,
-# you might want to consider:
-#  reject_unknown_helo_hostname,
-# here. This will reject all incoming mail without a HELO hostname that
-# properly resolves in DNS. This is a somewhat restrictive check and may
-# reject legitimate mail.
   reject_unauth_pipelining
 smtpd_sender_restrictions =
   permit_mynetworks,
@@ -157,11 +86,8 @@ smtpd_sender_restrictions =
   reject_non_fqdn_sender,
   reject_unknown_sender_domain,
   reject_unauth_pipelining,
-  #  reject_unknown_reverse_client_hostname,
-  #  reject_unknown_client_hostname,
   #check_sender_access      texthash:/etc/postfix/rejected_tlds
 smtpd_reject_unlisted_sender = yes  
- 
 smtpd_relay_restrictions = 
   permit_mynetworks, 
   permit_sasl_authenticated, 
@@ -191,7 +117,6 @@ smtpd_data_restrictions =
   reject_multi_recipient_bounce,
   reject_unauth_pipelining
 
-# ALIAS DATABASE
 alias_maps = texthash:/etc/postfix/aliases
 alias_database = $alias_maps
 
@@ -208,14 +133,6 @@ debug_peer_level = 2
 debugger_command =
 	 PATH=/bin:/usr/bin:/usr/local/bin:/usr/X11R6/bin
 	 ddd $daemon_directory/$process_name $process_id & sleep 5
-# debugger_command =
-#	PATH=/bin:/usr/bin:/usr/local/bin; export PATH; (echo cont;
-#	echo where) | gdb $daemon_directory/$process_name $process_id 2>&1
-#	>$config_directory/$process_name.$process_id.log & sleep 5
-# debugger_command =
-#	PATH=/bin:/usr/bin:/sbin:/usr/sbin; export PATH; screen
-#	-dmS $process_name gdb $daemon_directory/$process_name
-#	$process_id & sleep 1
 
 virtual_alias_maps = proxy:mysql:/etc/postfix/virtual_alias_maps.cf
 virtual_mailbox_domains = proxy:mysql:/etc/postfix/virtual_domains_maps.cf
@@ -234,13 +151,11 @@ smtpd_sasl_local_domain = $mydomain
 broken_sasl_auth_clients = yes
 smtpd_tls_loglevel = 1
   
-#non_smtpd_milters=unix:/var/run/rspamd/rspamd.sock
-#smtpd_milters=unix:/var/run/rspamd/rspamd.sock
-#non_smtpd_milters=inet:127.0.0.1:11332
-#smtpd_milters=inet:127.0.0.1:11332
-#milter_protocol = 6
-#milter_mail_macros=i {mail_addr} {client_addr} {client_name} {auth_authen}
-#milter_default_action = accept
+non_smtpd_milters=unix:/var/run/rspamd/rspamd.sock
+smtpd_milters=unix:/var/run/rspamd/rspamd.sock
+milter_protocol = 6
+milter_mail_macros=i {mail_addr} {client_addr} {client_name} {auth_authen}
+milter_default_action = accept
 smtpd_recipient_limit = 50
 smtpd_recipient_overshoot_limit = 51
 smtpd_hard_error_limit = 20
@@ -267,5 +182,87 @@ postscreen_dnsbl_sites =
         dnsbl.sorbs.net
        swl.spamhaus.org*-4
 ```
+Replace /etc/postfix/master.cf content with
+```
+smtp      inet  n       -       n       -       1       postscreen
+smtpd     pass  -       -       n       -       -       smtpd
+dnsblog   unix  -       -       n       -       0       dnsblog
+tlsproxy  unix  -       -       n       -       0       tlsproxy
+submission inet n       -       n       -       -       smtpd
+  -o smtpd_tls_dh1024_param_file=${config_directory}/dh1024.pem
+  -o smtpd_tls_security_level=encrypt
+  -o smtpd_sasl_auth_enable=yes
+  -o smtpd_recipient_restrictions=permit_sasl_authenticated,reject
+  -o milter_macro_daemon_name=ORIGINATING
+smtps     inet  n       -       n       -       -       smtpd
+  -o smtpd_tls_wrappermode=yes
+  -o smtpd_sasl_auth_enable=yes
+  -o smtpd_recipient_restrictions=permit_sasl_authenticated,reject
+  -o milter_macro_daemon_name=ORIGINATING
+pickup    unix  n       -       n       60      1       pickup
+cleanup   unix  n       -       y       -       0       cleanup
+header_cleanup unix n   -       -       -       0       cleanup
+ -o header_checks=regexp:/etc/postfix/submission_header_cleanup.cf
+qmgr      unix  n       -       n       300     1       qmgr
+#qmgr     unix  n       -       n       300     1       oqmgr
+tlsmgr    unix  -       -       n       1000?   1       tlsmgr
+rewrite   unix  -       -       n       -       -       trivial-rewrite
+bounce    unix  -       -       n       -       0       bounce
+defer     unix  -       -       n       -       0       bounce
+trace     unix  -       -       n       -       0       bounce
+verify    unix  -       -       n       -       1       verify
+flush     unix  n       -       n       1000?   0       flush
+proxymap  unix  -       -       n       -       -       proxymap
+proxywrite unix -       -       n       -       1       proxymap
+smtp      unix  -       -       n       -       -       smtp
+relay     unix  -       -       n       -       -       smtp
+showq     unix  n       -       n       -       -       showq
+error     unix  -       -       n       -       -       error
+retry     unix  -       -       n       -       -       error
+discard   unix  -       -       n       -       -       discard
+local     unix  -       n       n       -       -       local
+virtual   unix  -       n       n       -       -       virtual
+lmtp      unix  -       -       -       -       -       lmtp
+anvil     unix  -       -       n       -       1       anvil
+scache    unix  -       -       n       -       1       scache
+policy-spf  unix  -       n       n       -       0       spawn
+     user=nobody argv=/usr/lib/postfix/postfix-policyd-spf-perl  
+```
+Creat the following 4 files
+/etc/postfix/virtual_alias_maps.cf
+```
+user = postfix_user
+password = YOURPASSWORD
+hosts = localhost
+dbname = postfix_db
+query = SELECT goto FROM alias WHERE address='%s' AND active = '1'
+```
+/etc/postfix/virtual_domains_maps.cf
+```
+user = postfix_user
+password = YOURPASSWORD
+hosts = localhost
+dbname = postfix_db
+query = SELECT domain FROM domain WHERE domain='%s' AND backupmx = '0' AND active = '1'
+```
+/etc/postfix/virtual_mailbox_limits.cf
+```
+user = postfix_user
+password = YOURPASSWORD
+hosts = localhost
+dbname = postfix_db
+query = SELECT maildir FROM mailbox WHERE username='%s' AND active = '1'
+```
+/etc/postfix/virtual_mailbox_maps.cf
+```
+user = postfix_user
+password = YOURPASSWORD
+hosts = localhost
+dbname = postfix_db
+query = SELECT maildir FROM mailbox WHERE username='%s' AND active = '1'
+```
+
+
+
 5. 
 
