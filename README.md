@@ -150,12 +150,15 @@ smtpd_use_tls = yes
 smtpd_sasl_local_domain = $mydomain
 broken_sasl_auth_clients = yes
 smtpd_tls_loglevel = 1
-  
-non_smtpd_milters=unix:/var/run/rspamd/rspamd.sock
+
+## Comment out this part until after completing rspamd installation and configuration ##  
+non_smtpd_milters=unix:/var/run/rspamd/rspamd.sock 
 smtpd_milters=unix:/var/run/rspamd/rspamd.sock
 milter_protocol = 6
 milter_mail_macros=i {mail_addr} {client_addr} {client_name} {auth_authen}
 milter_default_action = accept
+##
+
 smtpd_recipient_limit = 50
 smtpd_recipient_overshoot_limit = 51
 smtpd_hard_error_limit = 20
@@ -592,7 +595,6 @@ upstream "local" {
 ```
 DOMAINNAME SELECTOR
 ```
-
-7. 
-8. 
+7. Fire it up
+8. You definitely want to add postfixadmin and roundcubemail.
 
