@@ -265,7 +265,7 @@ hosts = localhost
 dbname = postfix_db
 query = SELECT maildir FROM mailbox WHERE username='%s' AND active = '1'
 ```
-Install and configure postfixadmin with web server of your choice. Add DNS A record of your postfixadmin site. then launch YOURPOSTFIXADMINURL.setup.php. Your postfixadmin config file /etc/webapps/postfixadmin/config.local.php shoul include
+Install and configure postfixadmin with web server of your choice. Add DNS A record of your postfixadmin site. then launch YOURPOSTFIXADMINURL.setup.php in a browser. Your postfixadmin config file /etc/webapps/postfixadmin/config.local.php shoul include
 ```
 <?php
 $CONF['configured'] = true;
