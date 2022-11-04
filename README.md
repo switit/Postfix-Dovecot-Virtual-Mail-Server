@@ -32,10 +32,12 @@ quit;
 ```
 4. Install and configure postfix
 ```
-pacman -S postfix
+pacman -S postfix postfix-mysql
 systemctl start postfix
 systemctl enable postfix
 ```
+Install postfix-policyd-spf-perl from Aur
+
 Replace /etc/postfix/main.cf content with
 ```
 mydomain = example.com
