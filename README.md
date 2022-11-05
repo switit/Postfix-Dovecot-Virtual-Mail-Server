@@ -635,12 +635,12 @@ pipe :copy "rspamd-learn-ham.sh";
 require ["vnd.dovecot.pipe", "copy", "imapsieve"];
 pipe :copy "rspamd-learn-spam.sh";
 ```
-/etc/dovecot/sieve/rspamd-learn-ham.sh
+/etc/dovecot/sieve/rspamd-learn-ham.sh (Make the file executable)
 ```
 #!/bin/sh
 exec /usr/bin/rspamc learn_ham
 ```
-/etc/dovecot/sieve/rspamd-learn-spam.sh
+/etc/dovecot/sieve/rspamd-learn-spam.sh (Make the file executable)
 ```
 #!/bin/sh
 exec /usr/bin/rspamc learn_spam
@@ -658,5 +658,14 @@ Compile the .sieve files
 sievec /etc/dovecot/sieve
 sievec /etc/dovecot/sieve-before
 ```
+Some house cleaning
+```
+chown -R vmail:vmail /home/vmail
+chown -R vmail:vmail /etc/dovecot/sieve
+chown -R vmail:vmail /etc/dovecot/dict
+usermod -aG  redis rspamd
+usermod -aG  rspamd postfix
+```
+
 7. Fire it up
 
