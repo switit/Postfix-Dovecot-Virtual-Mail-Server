@@ -228,8 +228,6 @@ virtual   unix  -       n       n       -       -       virtual
 lmtp      unix  -       -       -       -       -       lmtp
 anvil     unix  -       -       n       -       1       anvil
 scache    unix  -       -       n       -       1       scache
-policy-spf  unix  -       n       n       -       0       spawn
-     user=nobody argv=/usr/lib/postfix/postfix-policyd-spf-perl  
 ```
 Creat the following 4 files
 
