@@ -36,8 +36,6 @@ pacman -S postfix postfix-mysql
 systemctl start postfix
 systemctl enable postfix
 ```
-Install postfix-policyd-spf-perl from Aur
-
 Replace /etc/postfix/main.cf content with
 ```
 mydomain = example.com
