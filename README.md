@@ -320,7 +320,7 @@ dict {
 Create the following files
 /etc/dovecot/dovecot-dict-sql.conf.ext
 ```
-connect = host=localhost dbname=postfix_db user=postfix_user password=127posx
+connect = host=localhost dbname=postfix_db user=postfix_user password=YOURPASSWORD
 map {
 pattern = priv/quota/storage
 table = quota2
