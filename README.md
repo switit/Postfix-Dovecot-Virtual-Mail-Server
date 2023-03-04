@@ -337,7 +337,7 @@ value_field = messages
 /etc/dovecot/dovecot-sql.conf
 ```
 driver = mysql
-connect = host=localhost dbname=postfix_db user=postfix_user password=127posx
+connect = host=localhost dbname=postfix_db user=postfix_user password=YOURPASSWORD
 default_pass_scheme = MD5-CRYPT
 user_query = SELECT '/home/vmail/%d/%u' as home, 'maildir:/home/vmail/%d/%u' as mail, 5000 AS uid, 5000 AS gid, concat('*:bytes=', quota) AS quota_rule FROM mailbox WHERE username = '%u' AND active = '1'
 password_query = SELECT username as user, password, '/home/vmail/%d/%u' as userdb_home, 'maildir:/home/vmail/%d/%u' as userdb_mail, 5000 as  userdb_uid, 5000 as userdb_gid, concat('*:bytes=', quota) AS userdb_quota_rule FROM mailbox WHERE username = '%u' AND active = '1'
