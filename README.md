@@ -570,7 +570,7 @@ EOF
 ```
 Make the file executable
 ```
-chomd +x /usr/local/bin/quota-warning.sh
+chmod +x /usr/local/bin/quota-warning.sh
 ```
 Then
 ```
