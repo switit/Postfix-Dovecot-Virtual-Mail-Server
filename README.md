@@ -602,7 +602,7 @@ systemctl start dovecot
 systemctl enable dovecot
 ```
 
-7. Install and configure rspamd amd redis
+7. Install and configure rspamd and redis
 ```
 pacman -S rspamd redis
 systemctl start rspamd; systemctl enable rspamd
