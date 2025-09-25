@@ -679,6 +679,12 @@ Compile the .sieve files
 sievec /etc/dovecot/sieve
 sievec /etc/dovecot/sieve-before
 ```
+Alter these lines in /etc/redis.conf
+```
+port 0
+unixsocket /run/redis/redis-server.sock
+unixsocketperm 700
+```
 Some house cleaning
 ```
 chown -R vmail:vmail /home/vmail
