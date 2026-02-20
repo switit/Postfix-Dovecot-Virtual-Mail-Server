@@ -696,3 +696,313 @@ usermod -aG  rspamd postfix
 
 7. Fire it up
 
+PS: dovecot 2.4 config
+```
+## Dovecot configuration file
+# Dovecot configuration version. This must be the first setting in the
+# configuration file. It specifies the configuration syntax, the used setting
+# names and the expected default values.
+dovecot_config_version = 2.4.2
+
+# Dovecot storage file format version. It specifies the oldest Dovecot version
+# that must be able to read files written by this Dovecot instance. The
+# intention is that when upgrading Dovecot cluster, this setting is first kept
+# as the old Dovecot version. Once the cluster is fully upgraded to a new
+# version and there is no intention to rollback to the old version anymore,
+# this version number can be increased.
+dovecot_storage_version = 2.4.2
+
+# The configuration below is a minimal configuration file using system user  authentication.
+# See https://doc.dovecot.org/latest/core/config/quick.html
+
+!include_try conf.d/*.conf
+
+protocols {
+    imap = yes
+    pop3 = yes
+    lmtp = yes
+    sieve = yes
+}
+
+#10-dovecot-postfix.conf
+mail_home = /home/vmail/%{user|domain}/%{user|username}
+mail_driver = maildir
+mail_path = ~
+
+mail_uid = vmail
+mail_gid = vmail
+
+namespace inbox {
+    inbox = yes
+    separator = /
+}
+
+#10-ssl.conf
+ssl = yes
+ssl_server_cert_file = /etc/ssl/private/vmail.crt
+ssl_server_key_file = /etc/ssl/private/vmail.key
+ssl_min_protocol = TLSv1
+
+#10-auth.conf
+sql_driver = mysql
+
+mysql localhost {
+    user = MY_DATABASE_USER
+    password = MY_DATABASE_USER_PASS
+    dbname = MY_DATABASE_DB_NAME
+}
+
+passdb_default_password_scheme = SHA512-CRYPT
+
+passdb sql {
+    query = SELECT username as user, '%{user|domain}' as domain, password, '/home/vmail/%{user|domain}/ %{user|username}' as userdb_home, 'maildir:/home/vmail/%{user|domain}/%{user|username}' as userdb_mail, 5000 as userdb_uid, 5000 as userdb_gid FROM mailbox WHERE username = '%{user}' AND domain = '%{user|domain}' AND active = '1'
+}
+
+userdb sql {
+    query = SELECT '/home/vmail/%{user|domain}/%{user|username}' as home, 'maildir:/home/vmail/%{user|domain}/%{user|username}' as mail, 5000 AS uid, 5000 AS gid, concat('dirsize:storage=',  quota) AS quota FROM mailbox WHERE username = '%{user}' AND domain = '%{user|domain}' AND active = '1'
+}
+
+#10-master.conf
+service auth {
+    unix_listener auth-client {
+        group = postfix
+        mode = 0660
+        user = postfix
+    }
+    user = root
+}
+service lmtp {
+  unix_listener lmtp {
+    #mode = 0666
+  }
+  unix_listener /var/spool/postfix/private/dovecot-lmtp {
+    mode = 0600
+    user = postfix
+    group = postfix
+  }
+}
+
+service dict {
+	unix_listener dict {
+		group = vmail
+		mode = 0660
+		user = vmail
+	}
+	user = root
+}
+
+service stats {
+    unix_listener stats-reader {
+        user = vmail
+        group = vmail
+        mode = 0660
+    }
+
+    unix_listener stats-writer {
+        user = vmail
+        group = vmail
+        mode = 0660
+    }
+}
+
+#15-mailboxs.conf
+namespace inbox {
+  # the namespace prefix isn't added again to the mailbox names.
+  #prefix = INBOX.
+  inbox = yes
+  # ...
+
+  mailbox Trash {
+    auto = no
+    autoexpunge = 30d
+    special_use = \Trash
+  }
+  mailbox "Deleted Items" {
+    auto = no
+    autoexpunge = 30d
+    special_use = \Trash
+  }
+  mailbox Drafts {
+    auto = no
+    special_use = \Drafts
+  }
+  mailbox Sent {
+    auto = subscribe # autocreate and autosubscribe the Sent mailbox
+    special_use = \Sent
+  }
+  mailbox "Sent Messages" {
+    auto = no
+    special_use = \Sent
+  }
+  mailbox Junk {
+    auto = create # autocreate Spam, but don't autosubscribe
+    autoexpunge = 30d
+    special_use = \Junk
+  }
+#  mailbox virtual/All { # if you have a virtual "All messages" mailbox
+#    auto = no
+#    special_use = \All
+#  }
+}
+mailbox_list_index = yes
+
+#20-managesieve.conf
+service managesieve-login {
+}
+
+service managesieve {
+}
+
+protocol sieve {
+    managesieve_max_line_length = 65536
+    managesieve_implementation_string = dovecot
+}
+sieve_script personal {
+    path = ~/sieve
+    active_path = ~/.dovecot.sieve
+}
+
+#20-protocols.conf
+mail_plugins=quota
+protocol pop3 {
+mail_plugins = quota
+pop3_client_workarounds = outlook-no-nuls oe-ns-eoh
+pop3_uidl_format = UID%{uid}-%{uidvalidity}
+}
+
+protocol lmtp {
+mail_plugins = quota sieve
+postmaster_address = postmaster@wisecomnet.com
+}	
+
+protocol lda {
+mail_plugins = quota
+postmaster_address = postmaster@wisecomnet.com
+}
+
+protocol imap {
+mail_plugins = $mail_plugins imap_quota imap_sieve
+mail_plugin_dir = /usr/lib/dovecot/modules
+}
+
+#90-dict-server.conf
+dict_server {
+   dict quota {
+    driver = sql
+    sql_driver = mysql    
+    hostname = localhost
+
+   dict_map priv/quota/storage {
+     sql_table = quota2
+     username_field = username
+     value_field bytes {
+       type = uint
+     }
+   }
+
+   dict_map priv/quota/messages {
+     sql_table = quota
+     username_field = username
+     value_field messages {
+       type = uint
+     }
+   }
+ }
+}
+
+#90-quota.conf
+mail_plugins {
+ quota = yes
+}
+quota dict:user::quota::proxy::quotadict {
+namespace inbox {
+  mailbox Trash {
+    quota_storage_extra = 100M
+  }
+}
+namespace inbox {
+  mailbox Junk {
+    quota_storage_extra = 0
+  }
+}
+quota "User quota" {
+ warning warn-95 {
+   quota_storage_percentage = 95
+   execute quota-warning {
+     args = 95 %{user}
+   }
+ }
+ warning warn-80 {
+   quota_storage_percentage = 80
+   execute quota-warning {
+     args = 80 %{user}
+   }
+ }
+}
+  quota_status_success = DUNNO
+  quota_status_nouser = DUNNO
+  quota_status_overquota = "452 4.2.2 Mailbox is full and cannot receive any more emails"
+}
+service quota-status {
+  executable = /usr/lib/dovecot/quota-status -p postfix
+  unix_listener /var/spool/postfix/private/quota-status {
+    	group = postfix
+		mode = 0600
+		user = postfix
+  }
+}
+
+service quota-warning {
+	executable = script /usr/local/bin/quota-warning.sh
+	user = vmail
+	unix_listener quota-warning {
+		group = vmail
+		mode = 0660
+		user = vmail
+	}
+}	
+
+#91-sieve
+sieve_plugins = sieve_imapsieve sieve_extprograms
+sieve_pipe_bin_dir    = /usr/share/dovecot-pigeonhole/sieve
+sieve_execute_bin_dir = /usr/share/dovecot-pigeonhole/sieve
+sieve_global_extensions {
+ vnd.dovecot.pipe = yes
+ vnd.dovecot.execute = yes
+}
+
+# Personal sieve script location
+sieve_script personal {
+ driver = file
+ path = ~/sieve
+ active_path = ~/.dovecot.sieve
+}
+
+# Default sieve script location
+sieve_script default {
+ type = default
+ name = default
+ driver = file
+ path = /etc/dovecot/sieve/
+}
+mailbox Junk {
+## From elsewhere to Spam folder
+ sieve_script report-spam {
+   type = before
+   cause = copy
+   path = /etc/dovecot/sieve/learn-spam.sieve
+ }
+}
+## From Spam folder to elsewhere
+imapsieve_from Junk {
+ sieve_script report-ham {
+   type = before
+   cause = copy
+   path = /etc/dovecot/sieve/learn-ham.sieve
+ }
+}
+sieve_global_extensions {
+ vnd.dovecot.pipe = yes
+ vnd.dovecot.execute = yes
+}
+```
